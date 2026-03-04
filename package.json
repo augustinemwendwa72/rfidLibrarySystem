@@ -1,0 +1,15 @@
+{
+  "name": "rfid-library-system",
+  "version": "1.0.0",
+  "description": "RFID based library management system with ESP8266",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "socket.io": "^4.7.2",
+    "csv-parser": "^3.0.0",
+    "csv-writer": "^1.6.0"
+  }
+}

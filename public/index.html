@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RFID Library Management System</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body>
+    <div class="sidebar">
+        <div class="logo">
+            <i class="fas fa-book-reader"></i>
+            <span>Shikondi Secondary School Library</span>
+        </div>
+        <nav>
+            <a href="#" class="nav-link active" data-page="dashboard">
+                <i class="fas fa-tachometer-alt"></i>
+                <span>Dashboard</span>
+            </a>
+            <a href="#" class="nav-link" data-page="books">
+                <i class="fas fa-book"></i>
+                <span>Books</span>
+            </a>
+            <a href="#" class="nav-link" data-page="add-book">
+                <i class="fas fa-plus-circle"></i>
+                <span>Add Books</span>
+            </a>
+            <a href="#" class="nav-link" data-page="students">
+                <i class="fas fa-users"></i>
+                <span>Students</span>
+            </a>
+            <a href="#" class="nav-link" data-page="borrowings">
+                <i class="fas fa-clipboard-list"></i>
+                <span>Borrowings</span>
+            </a>
+            <a href="#" class="nav-link" data-page="overdue">
+                <i class="fas fa-exclamation-triangle"></i>
+                <span>Overdue</span>
+            </a>
+        </nav>
+    </div>
+
+    <div class="main-content">
+        <header>
+            <h1 id="page-title">Dashboard</h1>
+            <div class="header-actions">
+                <button id="notification-btn" class="notification-btn">
+                    <i class="fas fa-bell"></i>
+                    <span id="notification-badge" class="badge">0</span>
+                </button>
+            </div>
+        </header>
+
+        <!-- Dashboard Page -->
+        <div id="dashboard-page" class="page active">
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <i class="fas fa-book"></i>
+                    <div class="stat-info">
+                        <h3>Total Books</h3>
+                        <p id="total-books">0</p>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <i class="fas fa-bookmark"></i>
+                    <div class="stat-info">
+                        <h3>Books Borrowed</h3>
+                        <p id="books-borrowed">0</p>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <i class="fas fa-users"></i>
+                    <div class="stat-info">
+                        <h3>Total Students</h3>
+                        <p id="total-students">0</p>
+                    </div>
+                </div>
+                <div class="stat-card warning">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    <div class="stat-info">
+                        <h3>Overdue Books</h3>
+                        <p id="overdue-count">0</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="recent-activity">
+                <h2>Book Categories (Shikondi Secondary School)</h2>
+                <div id="categories-grid" class="categories-grid">
+                    <!-- Categories will be loaded here -->
+                </div>
+            </div>
+
+            <div class="rfid-status">
+                <h2><i class="fas fa-wifi"></i> RFID Scanner Status</h2>
+                <div id="rfid-status" class="rfid-status-indicator">
+                    <span class="status-dot offline"></span>
+                    <span>Waiting for RFID scan...</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Books Page -->
+        <div id="books-page" class="page">
+            <div class="page-header">
+                <h2>Library Books</h2>
+                <div class="filter-controls">
+                    <select id="filter-category">
+                        <option value="">All Categories</option>
+                        <option value="Mathematics">Mathematics</option>
+                        <option value="Science">Science</option>
+                        <option value="English">English</option>
+                        <option value="Kiswahili">Kiswahili</option>
+                        <option value="Social Studies">Social Studies</option>
+                        <option value="Religious Education">Religious Education</option>
+                    </select>
+                    <select id="filter-class">
+                        <option value="">All Classes</option>
+                        <option value="Form 1">Form 1</option>
+                        <option value="Form 2">Form 2</option>
+                        <option value="Form 3">Form 3</option>
+                        <option value="Form 4">Form 4</option>
+                    </select>
+                </div>
+            </div>
+            <div id="books-list" class="books-grid">
+                <!-- Books will be loaded here -->
+            </div>
+        </div>
+
+        <!-- Add Book Page -->
+        <div id="add-book-page" class="page">
+            <div class="form-container">
+                <h2>Add New Book</h2>
+                <form id="add-book-form">
+                    <div class="form-group">
+                        <label for="book-title">Book Title</label>
+                        <input type="text" id="book-title" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="book-category">Category</label>
+                        <select id="book-category" required>
+                            <option value="">Select Category</option>
+                            <option value="Mathematics">Mathematics</option>
+                            <option value="Science">Science</option>
+                            <option value="English">English</option>
+                            <option value="Kiswahili">Kiswahili</option>
+                            <option value="Social Studies">Social Studies</option>
+                            <option value="Religious Education">Religious Education</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="book-class">Class</label>
+                        <select id="book-class" required>
+                            <option value="">Select Class</option>
+                            <option value="Form 1">Form 1</option>
+                            <option value="Form 2">Form 2</option>
+                            <option value="Form 3">Form 3</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="book-quantity">Quantity</label>
+                        <input type="number" id="book-quantity" min="1" value="1" required>
+                    </div>
+                    <button type="submit" class="btn-primary">Add Book</button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Students Page -->
+        <div id="students-page" class="page">
+            <div class="page-header">
+                <h2>Registered Students</h2>
+                <button id="add-student-btn" class="btn-primary">
+                    <i class="fas fa-plus"></i> Add Student
+                </button>
+            </div>
+            <div id="students-list" class="students-table">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Name</th>
+                            <th>Class</th>
+                            <th>RFID</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <!-- Students will be loaded here -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Borrowings Page -->
+        <div id="borrowings-page" class="page">
+            <div class="page-header">
+                <h2>Book Borrowings</h2>
+            </div>
+            <div id="borrowings-list" class="borrowings-table">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Student RFID</th>
+                            <th>Category</th>
+                            <th>Class</th>
+                            <th>Quantity</th>
+                            <th>Borrow Time</th>
+                            <th>Return Time</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <!-- Borrowings will be loaded here -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Overdue Page -->
+        <div id="overdue-page" class="page">
+            <div class="page-header">
+                <h2>Overdue Books</h2>
+            </div>
+            <div id="overdue-list" class="overdue-table">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Student RFID</th>
+                            <th>Category</th>
+                            <th>Class</th>
+                            <th>Quantity</th>
+                            <th>Borrow Time</th>
+                            <th>Due Time</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <!-- Overdue will be loaded here -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Notification Panel -->
+    <div id="notification-panel" class="notification-panel">
+        <div class="notification-header">
+            <h3>RFID Scan Notification</h3>
+            <button id="close-notification"><i class="fas fa-times"></i></button>
+        </div>
+        <div id="notification-content">
+            <p>RFID card scanned! Please fill in the details below:</p>
+            <div class="rfid-info">
+                <strong>RFID:</strong> <span id="scanned-rfid"></span>
+            </div>
+            <form id="borrow-form">
+                <div class="form-group">
+                    <label>Action Type</label>
+                    <select id="action-type" required>
+                        <option value="borrow">Borrow Book</option>
+                        <option value="return">Return Book</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Book Category</label>
+                    <select id="borrow-category" required>
+                        <option value="">Select Category</option>
+                        <option value="Mathematics">Mathematics</option>
+                        <option value="Science">Science</option>
+                        <option value="English">English</option>
+                        <option value="Kiswahili">Kiswahili</option>
+                        <option value="Social Studies">Social Studies</option>
+                        <option value="Religious Education">Religious Education</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Class</label>
+                    <select id="borrow-class" required>
+                        <option value="">Select Class</option>
+                        <option value="Form 1">Form 1</option>
+                        <option value="Form 2">Form 2</option>
+                        <option value="Form 3">Form 3</option>
+                        <option value="Form 4">Form 4</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Number of Books</label>
+                    <input type="number" id="borrow-quantity" min="1" value="1" required>
+                </div>
+                <button type="submit" class="btn-primary">Submit</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Add Student Modal -->
+    <div id="student-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Add New Student</h3>
+                <button class="close-modal">&times;</button>
+            </div>
+            <form id="add-student-form">
+                <div class="form-group">
+                    <label for="student-name">Student Name</label>
+                    <input type="text" id="student-name" required>
+                </div>
+                <div class="form-group">
+                    <label for="student-class">Class</label>
+                    <select id="student-class" required>
+                        <option value="">Select Class</option>
+                        <option value="Form 1">Form 1</option>
+                        <option value="Form 2">Form 2</option>
+                        <option value="Form 3">Form 3</option>
+                        <option value="Form 4">Form 4</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="student-rfid">RFID Card ID</label>
+                    <input type="text" id="student-rfid" required>
+                </div>
+                <button type="submit" class="btn-primary">Add Student</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Response Notification -->
+    <div id="response-notification" class="response-notification">
+        <div class="response-content">
+            <h4><i class="fas fa-check-circle"></i> Transaction Complete</h4>
+            <div id="response-details"></div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <p>Contact: masterdeveloper254@gmail.com</p>
+    </footer>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>
