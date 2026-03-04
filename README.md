@@ -1,18 +1,19 @@
 # RFID Library Management System
 
-A complete RFID-based library management system for junior secondary schools using ESP8266 (NodeMCU), Node.js, and HTML/CSS/JS.
+A complete RFID-based library management system for Shikondi Secondary School using ESP8266 (NodeMCU), Node.js, and HTML/CSS/JS.
 
 ## Features
 
 - **RFID Card Integration**: Students use RFID cards to borrow/return books
 - **Real-time Updates**: Socket.io provides instant UI updates
 - **Book Categories**: Mathematics, Science, English, Kiswahili, Social Studies, Religious Education
-- **Class Management**: Form 1, Form 2, Form 3
+- **Class Management**: Form 1, Form 2, Form 3, Form 4
 - **Borrowing System**: 5-hour lease period
 - **Overdue Tracking**: Automatic overdue book detection
 - **Student Blacklist**: Librarians can blacklist students from borrowing
 - **Add Books**: Librarian can add new books to the library
 - **CSV Data Storage**: All data stored locally in CSV files
+- **Smart Event Detection**: System automatically suggests borrow or return based on current loans
 
 ## Project Structure
 
@@ -93,7 +94,7 @@ Replace `YOUR_SERVER_IP` with your computer's local IP address.
 npm start
 ```
 
-The server will run on `http://localhost:3000`
+The server will run on `http://localhost:3200`
 
 ## Usage
 
@@ -101,7 +102,7 @@ The server will run on `http://localhost:3000`
 
 Open your browser and navigate to:
 ```
-http://localhost:3000
+http://localhost:3200
 ```
 
 ### 2. Add Books
@@ -110,21 +111,46 @@ http://localhost:3000
 2. Fill in the book details:
    - Book Title
    - Category (Mathematics, Science, etc.)
-   - Class (Form 1, 2, or 3)
+   - Class (Form 1, 2, 3, or 4)
    - Quantity
 3. Click "Add Book"
 
 ### 3. Add Students
 
+**Option A - Via Students Page:**
 1. Click "Students" in the sidebar
 2. Click "Add Student" button
 3. Fill in student details:
    - Student Name
    - Class
-   - RFID Card ID (scan the card with ESP8266 to get the ID)
+   - RFID Card ID
 4. Click "Add Student"
 
-### 4. Borrowing a Book
+**Option B - Via RFID Scan (New Card):**
+1. Student swipes their RFID card on the ESP8266 RFID reader
+2. The system detects it's a new card and shows notification
+3. Librarian clicks "Register Student" to add the student
+
+### 4. Borrowing/Returning a Book
+
+1. Student swipes their RFID card on the ESP8266 RFID reader
+2. The system automatically checks:
+   - If student is registered
+   - Number of books currently borrowed
+   - If blacklisted
+3. The librarian sees a notification with student details:
+   - Student name and class
+   - Number of books currently borrowed
+   - Suggested action (Borrow or Return)
+4. Librarian fills in the form:
+   - Action: Borrow or Return (pre-selected based on current status)
+   - Book Category
+   - Class
+   - Number of books
+5. Click "Submit"
+6. System shows confirmation with return time (5 hours from now for borrowing)
+
+### 5. Blacklist a Student
 
 1. Student swipes their RFID card on the ESP8266 RFID reader
 2. The librarian sees a notification popup

@@ -466,10 +466,109 @@ socket.on('rfidScanned', (data) => {
     
     // Show notification panel
     document.getElementById('scanned-rfid').textContent = data.rfid;
-    notificationPanel.classList.add('show');
     
-    // Show a quick notification
-    showResponseNotification(`RFID Card Scanned: ${data.rfid}`, 'success');
+    // Update the notification content based on student data
+    const notificationContent = document.getElementById('notification-content');
+    
+    if (data.registered) {
+        // Student is registered
+        const statusColor = data.blacklisted ? 'red' : 'green';
+        const statusText = data.blacklisted ? 'BLACKLISTED' : 'Active';
+        const eventText = data.event === 'return' ? 'Return Books' : 'Borrow Books';
+        const booksText = data.booksBorrowed > 0 ? 
+            `${data.booksBorrowed} book(s) currently borrowed` : 
+            'No books currently borrowed';
+        
+        // Update the form with student info
+        document.getElementById('action-type').value = data.event;
+        
+        // Show student info in notification
+        notificationContent.innerHTML = `
+            <div class="student-info" style="background: #f8f9fa; padding: 15px; border-radius: 5px; margin-bottom: 15px;">
+                <h4 style="margin: 0 0 10px 0; color: #2c3e50;">
+                    <i class="fas fa-user"></i> ${data.name}
+                </h4>
+                <p style="margin: 5px 0;"><strong>Class:</strong> ${data.class || 'N/A'}</p>
+                <p style="margin: 5px 0;"><strong>RFID:</strong> ${data.rfid}</p>
+                <p style="margin: 5px 0;"><strong>Status:</strong> <span style="color: ${statusColor}; font-weight: bold;">${statusText}</span></p>
+                <p style="margin: 5px 0;"><strong>${booksText}</strong></p>
+                <p style="margin: 10px 0 0 0; padding: 8px; background: #e3f2fd; border-radius: 3px;">
+                    <strong>Suggested Action:</strong> ${eventText}
+                </p>
+            </div>
+            <form id="borrow-form">
+                <div class="form-group">
+                    <label>Action Type</label>
+                    <select id="action-type" required>
+                        <option value="borrow" ${data.event === 'borrow' ? 'selected' : ''}>Borrow Book</option>
+                        <option value="return" ${data.event === 'return' ? 'selected' : ''}>Return Book</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Book Category</label>
+                    <select id="borrow-category" required>
+                        <option value="">Select Category</option>
+                        <option value="Mathematics">Mathematics</option>
+                        <option value="Science">Science</option>
+                        <option value="English">English</option>
+                        <option value="Kiswahili">Kiswahili</option>
+                        <option value="Social Studies">Social Studies</option>
+                        <option value="Religious Education">Religious Education</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Class</label>
+                    <select id="borrow-class" required>
+                        <option value="">Select Class</option>
+                        <option value="Form 1">Form 1</option>
+                        <option value="Form 2">Form 2</option>
+                        <option value="Form 3">Form 3</option>
+                        <option value="Form 4">Form 4</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Number of Books</label>
+                    <input type="number" id="borrow-quantity" min="1" value="1" required>
+                </div>
+                <button type="submit" class="btn-primary">Submit</button>
+            </form>
+        `;
+        
+        // Re-attach form submit handler
+        document.getElementById('borrow-form').addEventListener('submit', handleBorrowSubmit);
+        
+        showResponseNotification(
+            `${data.name} - ${eventText} (${data.booksBorrowed} books)`, 
+            data.blacklisted ? 'error' : 'success'
+        );
+    } else {
+        // New/unregistered card
+        notificationContent.innerHTML = `
+            <div class="new-card-info" style="background: #fff3cd; padding: 15px; border-radius: 5px; margin-bottom: 15px; border-left: 4px solid #ffc107;">
+                <h4 style="margin: 0 0 10px 0; color: #856404;">
+                    <i class="fas fa-exclamation-triangle"></i> New RFID Card
+                </h4>
+                <p style="margin: 5px 0;"><strong>RFID:</strong> ${data.rfid}</p>
+                <p style="margin: 10px 0 0 0;">This card is not registered in the system.</p>
+            </div>
+            <p style="text-align: center; color: #6c757d;">Please register this student first.</p>
+            <button id="register-student-btn" class="btn-primary" style="width: 100%;">
+                <i class="fas fa-user-plus"></i> Register Student
+            </button>
+        `;
+        
+        // Attach register button handler
+        document.getElementById('register-student-btn').addEventListener('click', () => {
+            notificationPanel.classList.remove('show');
+            showPage('students');
+            document.getElementById('student-rfid').value = data.rfid;
+            document.getElementById('student-modal').classList.add('show');
+        });
+        
+        showResponseNotification(`New RFID Card: ${data.rfid} - Not registered`, 'error');
+    }
+    
+    notificationPanel.classList.add('show');
 });
 
 // Real-time updates

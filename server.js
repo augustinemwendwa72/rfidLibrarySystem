@@ -321,11 +321,82 @@ app.get('/api/overdue', async (req, res) => {
     }
 });
 
-// Handle RFID scan from ESP8266
-app.post('/api/rfid-scan', (req, res) => {
-    const { rfid } = req.body;
-    io.emit('rfidScanned', { rfid, timestamp: new Date().toISOString() });
-    res.json({ success: true });
+// Handle RFID scan from ESP8266 (GET request)
+app.get('/api/rfid-scan', async (req, res) => {
+    const rfid = req.query.rfid;
+    
+    if (!rfid) {
+        return res.json({ 
+            error: 'RFID parameter is required',
+            registered: false 
+        });
+    }
+    
+    try {
+        // Read students data
+        const students = await readCSV(STUDENTS_FILE);
+        const student = students.find(s => s.rfid === rfid);
+        
+        // Read borrowings data to count active loans
+        const borrowings = await readCSV(BORROWINGS_FILE);
+        const activeBorrowings = borrowings.filter(b => 
+            b.student_rfid === rfid && b.status === 'active'
+        );
+        const booksBorrowed = activeBorrowings.reduce((sum, b) => sum + parseInt(b.quantity), 0);
+        
+        // Determine event type (borrow or return)
+        // If student has books borrowed, suggest return, otherwise suggest borrow
+        const event = booksBorrowed > 0 ? 'return' : 'borrow';
+        
+        if (student) {
+            // Student is registered
+            const response = {
+                registered: true,
+                name: student.name,
+                rfid: student.rfid,
+                class: student.class,
+                blacklisted: student.blacklisted === 'true',
+                booksBorrowed: booksBorrowed,
+                event: event,
+                message: student.blacklisted === 'true' ? 'Student is blacklisted' : 
+                        (booksBorrowed > 0 ? 'Return books' : 'Borrow books')
+            };
+            
+            // Emit to all connected clients
+            io.emit('rfidScanned', { 
+                ...response, 
+                timestamp: new Date().toISOString() 
+            });
+            
+            res.json(response);
+        } else {
+            // Student is not registered - new card
+            const response = {
+                registered: false,
+                name: null,
+                rfid: rfid,
+                class: null,
+                blacklisted: false,
+                booksBorrowed: 0,
+                event: 'new',
+                message: 'New RFID card - register student'
+            };
+            
+            // Emit to all connected clients
+            io.emit('rfidScanned', { 
+                ...response, 
+                timestamp: new Date().toISOString() 
+            });
+            
+            res.json(response);
+        }
+    } catch (error) {
+        console.error('Error processing RFID scan:', error);
+        res.json({ 
+            error: error.message,
+            registered: false 
+        });
+    }
 });
 
 // Socket.io connection
@@ -337,7 +408,7 @@ io.on('connection', (socket) => {
     });
 });
 
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 3200;
 server.listen(PORT, () => {
     console.log(`Server running on http://localhost:${PORT}`);
 });

@@ -2,7 +2,7 @@
  * RFID Library Management System - ESP8266 (NodeMCU) Code
  * 
  * This code reads RFID cards using MFRC522 module and sends
- * the RFID data to the server via HTTP POST request.
+ * the RFID data to the server via HTTP GET request.
  * 
  * Hardware Connections:
  * - NodeMCU D1 (GPIO5) -> MFRC522 RST
@@ -21,11 +21,12 @@
 #include <ESP8266HTTPClient.h>
 
 // WiFi Credentials - UPDATE THESE
-const char* ssid = "YOUR_WIFI_SSID";
-const char* password = "YOUR_WIFI_PASSWORD";
+const char* ssid = "shikondi";
+const char* password = "shikondi2026!";
 
 // Server URL - UPDATE THIS TO YOUR SERVER IP
-const char* serverUrl = "http://YOUR_SERVER_IP:3000/api/rfid-scan";
+// The server will return student data in JSON format
+const char* serverUrl = "http://b254systems.work.gd:3200/api/rfid-scan?rfid=";
 
 // MFRC522 Pin Configuration
 #define RST_PIN 5  // D1
@@ -42,7 +43,7 @@ unsigned long lastScanTime = 0;
 const unsigned long SCAN_COOLDOWN = 3000;  // 3 seconds cooldown between scans
 
 void setup() {
-    Serial.begin(115200);
+    Serial.begin(9600);
     delay(10);
     
     // Initialize LED
@@ -121,11 +122,11 @@ void loop() {
     Serial.print("Card UID: ");
     Serial.println(cardUID);
     
-    // Send data to server
-    sendToServer(cardUID);
+    // Send GET request to server and process response
+    String response = sendToServer(cardUID);
     
-    // Blink LED to indicate scan
-    blinkLED(3);
+    // Process the server response
+    processResponse(response);
     
     // Halt PICC
     rfid.PICC_HaltA();
@@ -136,7 +137,7 @@ void loop() {
     delay(100);
 }
 
-void sendToServer(String rfid) {
+String sendToServer(String rfid) {
     // Check WiFi connection
     if (WiFi.status() != WL_CONNECTED) {
         Serial.println("WiFi not connected, attempting to reconnect...");
@@ -145,40 +146,116 @@ void sendToServer(String rfid) {
         
         if (WiFi.status() != WL_CONNECTED) {
             Serial.println("Failed to reconnect to WiFi");
-            return;
+            return "{\"error\":\"WiFi disconnected\"}";
         }
     }
     
     WiFiClient client;
     HTTPClient http;
     
-    // Prepare request
-    http.begin(client, serverUrl);
+    // Build the GET URL with RFID parameter
+    String url = String(serverUrl) + rfid;
+    
+    Serial.print("Sending GET request to: ");
+    Serial.println(url);
+    
+    // Begin HTTP request
+    http.begin(client, url);
     http.addHeader("Content-Type", "application/json");
     
-    // Create JSON payload
-    String jsonPayload = "{\"rfid\":\"" + rfid + "\"}";
+    // Send GET request
+    int httpResponseCode = http.GET();
     
-    Serial.print("Sending data to server: ");
-    Serial.println(jsonPayload);
-    
-    // Send POST request
-    int httpResponseCode = http.POST(jsonPayload);
+    String response = "";
     
     // Get response
     if (httpResponseCode > 0) {
-        String response = http.getString();
+        response = http.getString();
         Serial.println("HTTP Response Code: " + String(httpResponseCode));
         Serial.println("Response: " + response);
     } else {
-        Serial.println("Error on sending POST: " + String(httpResponseCode));
+        Serial.println("Error on sending GET: " + String(httpResponseCode));
+        response = "{\"error\":\"HTTP request failed\"}";
     }
     
     http.end();
+    return response;
 }
 
-void blinkLED(int times) {
-    for (int i = 0; i < times; i++) {
+void processResponse(String response) {
+    // Parse JSON response from server
+    // Expected format:
+    // {
+    //   "registered": true/false,
+    //   "name": "Student Name" or null,
+    //   "rfid": "ABCD1234",
+    //   "blacklisted": true/false,
+    //   "booksBorrowed": 2,
+    //   "event": "borrow" or "return" or "new"
+    // }
+    
+    Serial.println("Processing response...");
+    
+    // Check for error
+    if (response.indexOf("error") != -1) {
+        Serial.println("Error in response");
+        indicateError();
+        return;
+    }
+    
+    // Check if student is registered
+    if (response.indexOf("\"registered\":true") != -1) {
+        // Student is registered
+        Serial.println("Student is registered");
+        indicateSuccess();
+    } else {
+        // Student is not registered
+        Serial.println("Student NOT registered");
+        indicateNewCard();
+    }
+    
+    // Extract and display key information
+    extractJsonValue(response, "name", "Name");
+    extractJsonValue(response, "booksBorrowed", "Books Borrowed");
+    extractJsonValue(response, "event", "Event");
+    extractJsonValue(response, "blacklisted", "Blacklisted");
+}
+
+void extractJsonValue(String response, String key, String label) {
+    int keyIndex = response.indexOf("\"" + key + "\"");
+    if (keyIndex != -1) {
+        int colonIndex = response.indexOf(":", keyIndex);
+        int valueStart = colonIndex + 1;
+        
+        // Skip whitespace
+        while (valueStart < response.length() && response.charAt(valueStart) == ' ') {
+            valueStart++;
+        }
+        
+        int valueEnd;
+        String value;
+        
+        if (response.charAt(valueStart) == '"') {
+            // String value
+            valueStart++; // Skip opening quote
+            valueEnd = response.indexOf('"', valueStart);
+            value = response.substring(valueStart, valueEnd);
+        } else {
+            // Boolean or number
+            valueEnd = response.indexOf(',', valueStart);
+            if (valueEnd == -1) valueEnd = response.indexOf('}', valueStart);
+            value = response.substring(valueStart, valueEnd);
+            value.trim();
+        }
+        
+        Serial.print(label + ": ");
+        Serial.println(value);
+    }
+}
+
+void indicateSuccess() {
+    // Quick double blink for registered student
+    for (int i = 0; i < 2; i++) {
         digitalWrite(LED_PIN, LOW);
         delay(100);
         digitalWrite(LED_PIN, HIGH);
@@ -190,20 +267,15 @@ void blinkLED(int times) {
     }
 }
 
-/*
- * Additional Functions for Status Indications
- */
-
-void indicateSuccess() {
-    // Quick double blink for success
+void indicateNewCard() {
+    // Long slow blink for new/unregistered card
     digitalWrite(LED_PIN, LOW);
-    delay(100);
+    delay(500);
     digitalWrite(LED_PIN, HIGH);
-    delay(100);
+    delay(500);
     digitalWrite(LED_PIN, LOW);
-    delay(100);
+    delay(500);
     digitalWrite(LED_PIN, HIGH);
-    delay(100);
     
     if (WiFi.status() == WL_CONNECTED) {
         digitalWrite(LED_PIN, HIGH);
@@ -211,38 +283,15 @@ void indicateSuccess() {
 }
 
 void indicateError() {
-    // Long blink for error
-    digitalWrite(LED_PIN, LOW);
-    delay(500);
-    digitalWrite(LED_PIN, HIGH);
-    delay(500);
+    // Series of quick blinks for error
+    for (int i = 0; i < 5; i++) {
+        digitalWrite(LED_PIN, LOW);
+        delay(50);
+        digitalWrite(LED_PIN, HIGH);
+        delay(50);
+    }
     
     if (WiFi.status() == WL_CONNECTED) {
         digitalWrite(LED_PIN, HIGH);
-    }
-}
-
-/*
- * Function to check server connection status
- */
-void checkServerConnection() {
-    if (WiFi.status() == WL_CONNECTED) {
-        WiFiClient client;
-        HTTPClient http;
-        
-        String statusUrl = String(serverUrl);
-        statusUrl.replace("/api/rfid-scan", "/api/books");
-        
-        http.begin(client, statusUrl);
-        int httpCode = http.GET();
-        http.end();
-        
-        if (httpCode == 200) {
-            digitalWrite(LED_PIN, HIGH);
-        } else {
-            digitalWrite(LED_PIN, LOW);
-            delay(100);
-            digitalWrite(LED_PIN, HIGH);
-        }
     }
 }
