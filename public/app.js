@@ -182,6 +182,7 @@ function renderStudents() {
                 ${student.blacklisted === 'true' 
                     ? `<button class="btn-success" onclick="unblacklistStudent('${student.rfid}')">Unblacklist</button>`
                     : `<button class="btn-danger" onclick="blacklistStudent('${student.rfid}')">Blacklist</button>`}
+                <button class="btn-danger" style="background: #e74c3c; margin-left: 5px;" onclick="deleteStudent('${student.rfid}')"><i class="fas fa-trash"></i></button>
             </td>
         </tr>
     `).join('');
@@ -286,6 +287,27 @@ async function unblacklistStudent(rfid) {
     }
 }
 
+// Delete Student
+async function deleteStudent(rfid) {
+    if (!confirm('Are you sure you want to delete this student? This action cannot be undone.')) return;
+    
+    try {
+        const response = await fetch(`/api/students/${rfid}`, {
+            method: 'DELETE'
+        });
+        
+        if (response.ok) {
+            showResponseNotification('Student deleted successfully', 'success');
+            loadData();
+        } else {
+            const data = await response.json();
+            showResponseNotification(data.error, 'error');
+        }
+    } catch (error) {
+        showResponseNotification('Error deleting student', 'error');
+    }
+}
+
 // Add Book Form
 addBookForm.addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -314,6 +336,38 @@ addBookForm.addEventListener('submit', async (e) => {
         }
     } catch (error) {
         showResponseNotification('Error adding book', 'error');
+    }
+});
+
+// Update Book Form
+const updateBookForm = document.getElementById('update-book-form');
+
+updateBookForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    
+    const bookData = {
+        category: document.getElementById('update-book-category').value,
+        class: document.getElementById('update-book-class').value,
+        quantity: document.getElementById('update-quantity').value
+    };
+    
+    try {
+        const response = await fetch('/api/books', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(bookData)
+        });
+        
+        if (response.ok) {
+            showResponseNotification('Book quantity updated successfully', 'success');
+            updateBookForm.reset();
+            loadData();
+        } else {
+            const data = await response.json();
+            showResponseNotification(data.error, 'error');
+        }
+    } catch (error) {
+        showResponseNotification('Error updating book quantity', 'error');
     }
 });
 
@@ -378,8 +432,8 @@ notificationPanel.addEventListener('click', (e) => {
     }
 });
 
-// Borrow/Return Form
-borrowForm.addEventListener('submit', async (e) => {
+// Borrow/Return Form Handler
+async function handleBorrowSubmit(e) {
     e.preventDefault();
     
     const actionType = document.getElementById('action-type').value;
@@ -422,7 +476,10 @@ borrowForm.addEventListener('submit', async (e) => {
     } catch (error) {
         showResponseNotification('Error processing request', 'error');
     }
-});
+}
+
+// Attach form submit handler
+borrowForm.addEventListener('submit', handleBorrowSubmit);
 
 // Show Response Notification
 function showResponseNotification(message, type) {

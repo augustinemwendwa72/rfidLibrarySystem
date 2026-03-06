@@ -166,6 +166,39 @@
                     <button type="submit" class="btn-primary">Add Book</button>
                 </form>
             </div>
+            
+            <div class="form-container">
+                <h2>Update Book Quantity</h2>
+                <form id="update-book-form">
+                    <div class="form-group">
+                        <label for="update-book-category">Category</label>
+                        <select id="update-book-category" required>
+                            <option value="">Select Category</option>
+                            <option value="Mathematics">Mathematics</option>
+                            <option value="Science">Science</option>
+                            <option value="English">English</option>
+                            <option value="Kiswahili">Kiswahili</option>
+                            <option value="Social Studies">Social Studies</option>
+                            <option value="Religious Education">Religious Education</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="update-book-class">Class</label>
+                        <select id="update-book-class" required>
+                            <option value="">Select Class</option>
+                            <option value="Form 1">Form 1</option>
+                            <option value="Form 2">Form 2</option>
+                            <option value="Form 3">Form 3</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="update-quantity">Add/Remove Quantity</label>
+                        <input type="number" id="update-quantity" value="0" required>
+                        <small>Use negative numbers to reduce quantity</small>
+                    </div>
+                    <button type="submit" class="btn-primary">Update Quantity</button>
+                </form>
+            </div>
         </div>
 
         <!-- Students Page -->

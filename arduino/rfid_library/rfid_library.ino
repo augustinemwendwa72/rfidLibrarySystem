@@ -19,10 +19,12 @@
 #include <SPI.h>
 #include <MFRC522.h>
 #include <ESP8266HTTPClient.h>
+#include <SoftwareSerial.h>
 
 // WiFi Credentials - UPDATE THESE
 const char* ssid = "shikondi";
 const char* password = "shikondi2026!";
+String myRfid = "";
 
 // Server URL - UPDATE THIS TO YOUR SERVER IP
 // The server will return student data in JSON format
@@ -37,6 +39,12 @@ MFRC522 rfid(SDA_PIN, RST_PIN);  // Create MFRC522 instance
 // LED Pin
 #define LED_PIN 16  // D0
 
+// SoftwareSerial for LCD Arduino (TX only - we send to Arduino Uno)
+// Connect ESP8266 TX (D4/GPIO2) to Arduino Uno RX (Pin 10)
+#define SERIAL_TX D4  // D4
+
+SoftwareSerial serialOut(D4,D3);  // TX only, -1 means no RX
+
 // Variables
 String lastCardUID = "";
 unsigned long lastScanTime = 0;
@@ -44,6 +52,7 @@ const unsigned long SCAN_COOLDOWN = 3000;  // 3 seconds cooldown between scans
 
 void setup() {
     Serial.begin(9600);
+    serialOut.begin(9600);  // SoftwareSerial for LCD Arduino
     delay(10);
     
     // Initialize LED
@@ -61,6 +70,7 @@ void setup() {
     // Connect to WiFi
     Serial.println();
     Serial.print("Connecting to WiFi...");
+    serialOut.println("Connecting to WiFi");
     WiFi.begin(ssid, password);
     
     int attempts = 0;
@@ -76,9 +86,11 @@ void setup() {
         Serial.print("IP Address: ");
         Serial.println(WiFi.localIP());
         digitalWrite(LED_PIN, HIGH);  // LED on when connected
+        serialOut.println("WIFI Connected");
     } else {
         Serial.println("");
         Serial.println("WiFi Connection Failed!");
+        serialOut.println("WIFI Failed");
     }
 }
 
@@ -138,9 +150,11 @@ void loop() {
 }
 
 String sendToServer(String rfid) {
+    myRfid = rfid;
     // Check WiFi connection
     if (WiFi.status() != WL_CONNECTED) {
         Serial.println("WiFi not connected, attempting to reconnect...");
+        serialOut.println("Connecting to WiFi");
         WiFi.begin(ssid, password);
         delay(5000);
         
@@ -196,29 +210,101 @@ void processResponse(String response) {
     
     Serial.println("Processing response...");
     
+    // Extract values for sending to LCD
+    String rfidValue = "";
+    String registeredValue = "false";
+    String nameValue = "Unknown";
+    String eventValue = "";
+    String messageValue = "";
+    
+    // Extract RFID
+    rfidValue = extractValue(response, "rfid");
+    
+    // Extract registered status
+    if (response.indexOf("\"registered\":true") != -1) {
+        registeredValue = "true";
+    }
+    
+    // Extract name
+    nameValue = extractValue(response, "name");
+    if (nameValue == "null" || nameValue == "") {
+        nameValue = "Unknown";
+    }
+    
+    // Extract event
+    eventValue = extractValue(response, "event");
+    
+    // Extract booksBorrowed
+    String booksBorrowedValue = extractValue(response, "booksBorrowed");
+    if (booksBorrowedValue == "") {
+        booksBorrowedValue = "0";
+    }
+    
     // Check for error
     if (response.indexOf("error") != -1) {
         Serial.println("Error in response");
         indicateError();
+        // Send error to LCD
+        serialOut.println(rfidValue + "|false|Error|0||");
         return;
     }
     
     // Check if student is registered
-    if (response.indexOf("\"registered\":true") != -1) {
+    if (registeredValue == "true") {
         // Student is registered
         Serial.println("Student is registered");
         indicateSuccess();
+        messageValue = "Welcome " + nameValue;
     } else {
         // Student is not registered
         Serial.println("Student NOT registered");
         indicateNewCard();
+        messageValue = "Not Registered";
     }
+    
+    // Send data to LCD Arduino
+    // Format: rfid|registered|name|booksBorrowed|event|message
+    String lcdMessage = rfidValue + "|" + registeredValue + "|" + nameValue + "|" + booksBorrowedValue + "|" + eventValue + "|" + messageValue;
+    serialOut.println(lcdMessage);
+    Serial.println("Sent to LCD: " + lcdMessage);
     
     // Extract and display key information
     extractJsonValue(response, "name", "Name");
     extractJsonValue(response, "booksBorrowed", "Books Borrowed");
     extractJsonValue(response, "event", "Event");
     extractJsonValue(response, "blacklisted", "Blacklisted");
+}
+
+String extractValue(String json, String key) {
+    int keyIndex = json.indexOf("\"" + key + "\"");
+    if (keyIndex != -1) {
+        int colonIndex = json.indexOf(":", keyIndex);
+        int valueStart = colonIndex + 1;
+        
+        // Skip whitespace
+        while (valueStart < json.length() && json.charAt(valueStart) == ' ') {
+            valueStart++;
+        }
+        
+        int valueEnd;
+        String value;
+        
+        if (json.charAt(valueStart) == '\"') {
+            // String value
+            valueStart++; // Skip opening quote
+            valueEnd = json.indexOf('\"', valueStart);
+            value = json.substring(valueStart, valueEnd);
+        } else {
+            // Boolean or number
+            valueEnd = json.indexOf(',', valueStart);
+            if (valueEnd == -1) valueEnd = json.indexOf('}', valueStart);
+            value = json.substring(valueStart, valueEnd);
+            value.trim();
+        }
+        
+        return value;
+    }
+    return "";
 }
 
 void extractJsonValue(String response, String key, String label) {

@@ -170,6 +170,34 @@ app.post('/api/books', async (req, res) => {
     }
 });
 
+// Update book quantity
+app.put('/api/books', async (req, res) => {
+    try {
+        const books = await readCSV(BOOKS_FILE);
+        const book = books.find(b => b.category === req.body.category && b.class === req.body.class);
+        
+        if (!book) {
+            return res.status(404).json({ error: 'Book not found' });
+        }
+        
+        const quantityChange = parseInt(req.body.quantity);
+        book.quantity = (parseInt(book.quantity) + quantityChange).toString();
+        book.available = (parseInt(book.available) + quantityChange).toString();
+        
+        if (parseInt(book.quantity) < 0 || parseInt(book.available) < 0) {
+            return res.status(400).json({ error: 'Invalid quantity' });
+        }
+        
+        const headers = ['id', 'title', 'category', 'class', 'quantity', 'available', 'lease_period'];
+        await writeCSV(BOOKS_FILE, books, headers);
+        
+        io.emit('booksUpdated', books);
+        res.json(book);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
 // Borrow books
 app.post('/api/borrow', async (req, res) => {
     try {
@@ -298,6 +326,28 @@ app.post('/api/blacklist/:rfid', async (req, res) => {
         
         io.emit('studentsUpdated', students);
         res.json(student);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Delete student
+app.delete('/api/students/:rfid', async (req, res) => {
+    try {
+        const students = await readCSV(STUDENTS_FILE);
+        const studentIndex = students.findIndex(s => s.rfid === req.params.rfid);
+        
+        if (studentIndex === -1) {
+            return res.status(404).json({ error: 'Student not found' });
+        }
+        
+        students.splice(studentIndex, 1);
+        
+        const headers = ['id', 'name', 'class', 'rfid', 'blacklisted', 'created_at'];
+        await writeCSV(STUDENTS_FILE, students, headers);
+        
+        io.emit('studentsUpdated', students);
+        res.json({ success: true, message: 'Student deleted successfully' });
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
